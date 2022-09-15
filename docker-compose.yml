@@ -1,0 +1,35 @@
+version: '3.1'
+
+services:
+  telegram:
+    build: .
+    command: -t ${TELEGRAM_BOT_TOKEN} -d mongodb://${MONGO_ADMIN_USERNAME}:${MONGO_ADMIN_PASSWORD}@db-back:27017/
+    restart: always
+    depends_on:
+      - "db-back"
+
+  db-back:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_PASSWORD}
+    volumes:
+     - dbstore:/data/db
+
+  db-web:
+    image: mongo-express
+    restart: always
+    ports:
+     - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ADMIN_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ADMIN_PASSWORD}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ADMIN_USERNAME}:${MONGO_ADMIN_PASSWORD}@db-back:27017/
+    depends_on:
+      - "db-back"
+    profiles:
+      - donotstart
+
+volumes:
+  dbstore: {}
