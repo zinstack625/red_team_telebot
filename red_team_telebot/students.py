@@ -30,10 +30,13 @@ async def get_mail(msg: Message):
     email = await db.db['Emails'].find_one({})
     if student is not None:
         if email is None:
-            await bot.send_message(msg.from_user.id,
-                                   'No emails available yet. '
-                                   'I\'m gonna make sure you get one as soon as possible. '
-                                   'You\'re in queue!')
+            await gather(bot.send_message(msg.from_user.id,
+                                          'No emails available yet. '
+                                          'I\'m gonna make sure you get one as soon as possible. '
+                                          'You\'re in queue!'),
+                         *[bot.send_message(admin['chat_id'],
+                                            f'A new student has come! <a href="tg://user?id={msg.from_user.id}">{get_name(msg.from_user)}</a>')
+                                            async for admin in db.db['Admins'].find({})])
             return
         await gather(bot.send_message(msg.from_user.id,
                                       'There is an email available! Here you go:\n'
