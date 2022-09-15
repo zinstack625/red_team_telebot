@@ -29,6 +29,6 @@ if __name__ == '__main__':
     args = cli_args.parse_args()
     red_team_telebot.telegram.InitBot(args.token)
     db.client = motor.motor_asyncio.AsyncIOMotorClient(args.db)
-    db.db = db.client['test']
+    db.db = db.client['red_team']
     signal.signal(signal.SIGINT, signal_handler)
     run(main())
