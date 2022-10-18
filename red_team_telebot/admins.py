@@ -61,19 +61,21 @@ async def stateful_add_email(msg: Message):
         await gather(bot.delete_state(msg.from_user.id),
                      bot.send_message(msg.from_user.id, 'Ok, stopping'))
         return
-    match = re.match('(.*@.*\\..*):(.*)', msg.text)
-    if match is None:
-        await gather(bot.delete_state(msg.from_user.id),
-                     bot.send_message(msg.from_user.id, 'No format detected, stopping listening'))
-        return
-    email = match.group(1)
-    password = match.group(2)
-    if await db.db['Emails'].find_one({'email': email}) is not None:
-        await bot.send_message(msg.from_user.id, 'This one already exists, not adding')
-        return
-    await gather(give_out_email(msg, {'email': email, 'password': password}),
-                 bot.send_message(msg.from_user.id, 'Got it'))
-
+    tasks = []
+    for line in msg.text.split('\n'):
+        match = re.match('(.*@.*\\..*):(.*)', msg.text)
+        if match is None:
+            await gather(bot.delete_state(msg.from_user.id),
+                         bot.send_message(msg.from_user.id, f'Invalid format: {line}\nskipping...'))
+            continue
+        email = match.group(1)
+        password = match.group(2)
+        if await db.db['Emails'].find_one({'email': email}) is not None:
+            await bot.send_message(msg.from_user.id, 'This one already exists, not adding...')
+            continue
+        tasks.append(give_out_email(msg, {'email': email, 'password': password}))
+    await gather(bot.send_message(msg.from_user.id, 'Got it'),
+                 *tasks)
 
 @bot.message_handler(func=lambda x: x.text == 'Add email (json)')
 async def add_email_json(msg: Message):
