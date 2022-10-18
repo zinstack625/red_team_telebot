@@ -63,7 +63,7 @@ async def stateful_add_email(msg: Message):
         return
     tasks = []
     for line in msg.text.split('\n'):
-        match = re.match('(.*@.*\\..*):(.*)', msg.text)
+        match = re.match('(.*):(.*)', msg.text)
         if match is None:
             await gather(bot.delete_state(msg.from_user.id),
                          bot.send_message(msg.from_user.id, f'Invalid format: {line}\nskipping...'))
