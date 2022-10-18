@@ -28,7 +28,7 @@ async def give_out_email(msg: Message, email: dict):
     student = await db.db['Students'].find_one({'email': {'$exists': False}})
     if student is not None:
         await gather(bot.send_message(msg.from_user.id,
-                                      'There was a student waiting, that one went out to '
+                                      f'There was a student waiting, {email["email"]}:{email["password"]} went out to '
                                       f'<a href="tg://user?id={student["chat_id"]}">@{student["name"]}</a>'),
                      bot.send_message(student['chat_id'], 
                                       'There is an email available! Here you go:\n'
@@ -51,8 +51,7 @@ async def add_email(msg: Message):
                                   'Listening for emails. '
                                   'Write them in the following messages one at a time. \n\n'
                                   '<i>Format</i>:\n'
-                                  'email@example.com\n'
-                                  'p4s$w0rd\n\n'
+                                  'email@example.com:p4s$w0rd\n\n'
                                   'When you\'re ready to stop, send "__Stop__"'))
 
 
@@ -62,7 +61,7 @@ async def stateful_add_email(msg: Message):
         await gather(bot.delete_state(msg.from_user.id),
                      bot.send_message(msg.from_user.id, 'Ok, stopping'))
         return
-    match = re.match('(.*@.*\\..*)\n(.*)', msg.text)
+    match = re.match('(.*@.*\\..*):(.*)', msg.text)
     if match is None:
         await gather(bot.delete_state(msg.from_user.id),
                      bot.send_message(msg.from_user.id, 'No format detected, stopping listening'))
@@ -104,11 +103,21 @@ async def state_add_email_json(msg: Message):
         await gather(bot.delete_state(msg.from_user.id),
                      bot.send_message(msg.from_user.id, 'No format detected, stopping listening'))
         return
-    if await db.db['Emails'].find_one({'email': str(msg_dict['email'])}) is not None:
-        await bot.send_message(msg.from_user.id, 'This one already exists, not adding')
-        return
-    await gather(give_out_email({'email': str(msg_dict['email']), 'password': str(msg_dict['password'])}),
-                 bot.send_message(msg.from_user.id, 'Got it'))
+    if type(msg_dict) is dict:
+        if await db.db['Emails'].find_one({'email': str(msg_dict['email'])}) is not None:
+            await bot.send_message(msg.from_user.id, 'This one already exists, not adding')
+            return
+        await gather(give_out_email({'email': str(msg_dict['email']), 'password': str(msg_dict['password'])}),
+                     bot.send_message(msg.from_user.id, 'Got it'))
+    elif type(msg_dict) is list:
+        tasks = []
+        for pair in msg_dict:
+            if await db.db['Emails'].find_one({'email': str(pair['email'])}) is not None:
+                tasks.append(bot.send_message(msg.from_user.id, f'This one: {str(pair["email"])}:{str(pair["password"])}\nalready exists, not adding'))
+                continue
+            tasks.append(give_out_email({'email': str(pair['email']), 'password': str(pair['password'])}))
+        await gather(bot.send_message(msg.from_user.id, 'Got it'),
+                     *tasks)
 
 
 @bot.message_handler(func=lambda x: x.text == 'List and remove')
