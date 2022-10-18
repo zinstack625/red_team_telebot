@@ -61,4 +61,5 @@ async def get_mail(msg: Message):
         await bot.send_message(msg.from_user.id,
                                'There\'s no more emails available! '
                                'Try contacting your teacher about getting some more!')
-    await db.db['Students'].insert_one(student)
+    await gather(db.db['Students'].insert_one(student),
+                 db.db['Emails'].delete_one({'_id': email['_id']}))
