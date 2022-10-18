@@ -12,18 +12,18 @@ def get_name(user: User):
 async def student_start(msg: Message):
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(*[KeyboardButton(option)
-                   for option in ['Get mail']])
+                   for option in ['Get creds']])
     await bot.send_message(msg.from_user.id,
                            'Hi, student',
                            reply_markup=keyboard)
 
 
-@bot.message_handler(func=lambda x: x.text == 'Get mail')
+@bot.message_handler(func=lambda x: x.text == 'Get creds')
 async def get_mail(msg: Message):
     student = await db.db['Students'].find_one({'chat_id': msg.from_user.id})
     if student is not None and student['email'] is not None:
         await bot.send_message(msg.from_user.id,
-                               'You\'ve already got an email address:\n'
+                               'You\'ve already got a cred pair:\n'
                                f'{student["email"]["email"]}\n'
                                f'<tg-spoiler>{student["email"]["password"]}</tg-spoiler>')
         return
@@ -31,7 +31,7 @@ async def get_mail(msg: Message):
     if student is not None:
         if email is None:
             await gather(bot.send_message(msg.from_user.id,
-                                          'No emails available yet. '
+                                          'No creds available yet. '
                                           'I\'m gonna make sure you get one as soon as possible. '
                                           'You\'re in queue!'),
                          *[bot.send_message(admin['chat_id'],
@@ -39,12 +39,12 @@ async def get_mail(msg: Message):
                                             async for admin in db.db['Admins'].find({})])
             return
         await gather(bot.send_message(msg.from_user.id,
-                                      'There is an email available! Here you go:\n'
+                                      'There is a cred pair available! Here you go:\n'
                                       f'{email["email"]}\n'
                                       f'<tg-spoiler>{email["password"]}</tg-spoiler>'),
                      *[bot.send_message(admin['chat_id'],
                                         f'Student: <a href="tg://user?id={msg.from_user.id}">{get_name(msg.from_user)}</a> '
-                                        f'got email {email["email"]}')
+                                        f'got creds {email["email"]}')
                        async for admin in db.db['Admins'].find({})],
                      db.db['Students'].update_one({'_id': student['_id']},
                                                   {'$set': {'email': email}}),
@@ -54,12 +54,12 @@ async def get_mail(msg: Message):
     if email is not None:
         student['email'] = email
         await bot.send_message(msg.from_user.id,
-                               'There is an email available! Here you go:\n'
+                               'There is a cred pair available! Here you go:\n'
                                f'{email["email"]}\n'
                                f'<tg-spoiler>{email["password"]}</tg-spoiler>')
     else:
         await bot.send_message(msg.from_user.id,
-                               'There\'s no more emails available! '
+                               'There\'s no more creds available! '
                                'Try contacting your teacher about getting some more!')
     await gather(db.db['Students'].insert_one(student),
                  db.db['Emails'].delete_one({'_id': email['_id']}))
